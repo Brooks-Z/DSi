@@ -132,9 +132,17 @@ def register():
         password = request.form['password']
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
         new_user = User(username=username, password=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
-        return redirect(url_for('login'))
+
+        try:
+            db.session.add(new_user)
+            db.session.commit()
+            flash("注册成功！请登录", "success")
+            return redirect(url_for('login'))
+        except IntegrityError:
+            db.session.rollback()
+            flash("用户名已存在，请选择其他用户名。", "danger")
+            return render_template('register.html')
+    
     return render_template('register.html')
 
 # 用户面板（显示公告、课程表）
