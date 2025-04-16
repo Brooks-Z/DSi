@@ -16,6 +16,19 @@
         .upload-link {
             background-color: #e9f5ff;
             color: #0056b3;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        li {
+            display: inline-block;
         }
     </style>
 </head>
@@ -27,15 +40,17 @@
     <nav>
         <ul>
             <li><a href="{{ url_for('resources') }}" class="library-link">进入学校资料馆</a></li>
+            
             {% if user.username == 'Brooks' %}
                 <li><a href="{{ url_for('upload_resource') }}" class="upload-link">上传资料</a></li>
             {% endif %}
             
-            {# 新增管理员导航 #}
             {% if user.is_admin or user.is_superadmin %}
+                <li><a href="{{ url_for('upload_resource') }}" class="upload-link">上传资料</a></li>
+                <li><a href="{{ url_for('manage_timetable') }}" class="upload-link">添加/管理课程</a></li>
                 <li><a href="{{ url_for('user_management') }}" class="admin-link">用户管理</a></li>
             {% endif %}
-            
+
             <li><a href="{{ url_for('logout') }}" class="logout-link">退出登录</a></li>
         </ul>
     </nav>
