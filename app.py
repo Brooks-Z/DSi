@@ -8,6 +8,9 @@ from wtforms.validators import DataRequired
 from werkzeug.utils import secure_filename
 from flask_migrate import Migrate
 import os
+from functools import wraps  # 解决 wraps 未定义问题
+from flask import abort  # 解决 abort 未定义问题
+from sqlalchemy.exc import IntegrityError  # 解决 IntegrityError 未定义问题
 
 # 初始化 Flask 应用
 app = Flask(__name__)
@@ -29,12 +32,14 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
-    is_admin = db.Column(db.Boolean, default=False)  # 标记是否为管理员
+    is_admin = db.Column(db.Boolean, default=False)
+    is_superadmin = db.Column(db.Boolean, default=False)  # 新增超级管理员字段
 
-    def __init__(self, username, password, is_admin=False):
+    def __init__(self, username, password, is_admin=False, is_superadmin=False):
         self.username = username
         self.password = password
         self.is_admin = is_admin
+        self.is_superadmin = is_superadmin
 
 # 公告模型
 class Announcement(db.Model):
@@ -86,6 +91,16 @@ class ResourceUploadForm(FlaskForm):
 with app.app_context():
     db.create_all()
     brooks = User.query.filter_by(username='Brooks').first()
+    superadmin = User.query.filter_by(username='admin').first()
+    if not superadmin:
+        superadmin = User(
+            username='admin',
+            password=generate_password_hash('securepassword123', method='pbkdf2:sha256'),
+            is_admin=True,
+            is_superadmin=True
+        )
+        db.session.add(superadmin)
+        db.session.commit()
     if not brooks:
         brooks = User(username='Brooks', password=generate_password_hash('password123', method='pbkdf2:sha256'), is_admin=True)
         db.session.add(brooks)
@@ -123,6 +138,13 @@ def login():
         else:
             return "登录失败，请检查用户名和密码", 401
     return render_template('login.html')
+# 退出登录路由
+@app.route('/logout')
+def logout():
+    # 清除会话数据
+    session.pop('user_id', None)
+    # 重定向到登录页
+    return redirect(url_for('login'))
 
 # 注册功能
 @app.route('/register', methods=['GET', 'POST'])
@@ -144,6 +166,7 @@ def register():
             return render_template('register.html')
     
     return render_template('register.html')
+
 
 # 用户面板（显示公告、课程表）
 @app.route('/dashboard')
@@ -304,6 +327,76 @@ def add_timetable_entry():
     db.session.add(new_entry)
     db.session.commit()
     return redirect(url_for('manage_timetable'))
+
+# 管理员权限装饰器
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        user = User.query.get(session['user_id'])
+        if not (user.is_admin or user.is_superadmin):
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
+# 超级管理员权限装饰器
+def superadmin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        user = User.query.get(session['user_id'])
+        if not user.is_superadmin:
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+# 用户管理路由
+@app.route('/admin/users')
+@admin_required
+def user_management():
+    user = User.query.get(session['user_id'])
+    query = User.query
+    
+    # 普通管理员只能查看普通用户
+    if not user.is_superadmin:
+        query = query.filter(User.is_admin == False)
+    
+    users = query.order_by(User.username).all()
+    return render_template('user_management.html', users=users, user=user)
+
+# 删除用户路由
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+@admin_required
+def delete_user(user_id):
+    current_user = User.query.get(session['user_id'])
+    target_user = User.query.get_or_404(user_id)
+
+    # 权限验证
+    if target_user.is_superadmin:
+        flash("无法删除超级管理员", "danger")
+    elif target_user.is_admin and not current_user.is_superadmin:
+        flash("普通管理员无权删除其他管理员", "danger")
+    else:
+        # 删除用户相关数据（根据实际需求补充级联删除）
+        db.session.delete(target_user)
+        db.session.commit()
+        flash("用户已成功删除", "success")
+    
+    return redirect(url_for('user_management'))
+
+# 提升/撤销管理员权限
+@app.route('/admin/toggle_admin/<int:user_id>', methods=['POST'])
+@superadmin_required
+def toggle_admin(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.is_superadmin:
+        flash("无法修改超级管理员权限", "danger")
+    else:
+        user.is_admin = not user.is_admin
+        db.session.commit()
+        flash(f"已{'授予' if user.is_admin else '撤销'}管理员权限", "success")
+    return redirect(url_for('user_management'))
 
 # 检查文件类型是否合法
 
