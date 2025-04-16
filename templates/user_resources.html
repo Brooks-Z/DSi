@@ -1,0 +1,8 @@
+<h2>{{ user.username }} 的上传资料</h2>
+<ul>
+    {% for r in resources %}
+        <li>{{ r.title }} - 类别：{{ r.category }} - 上传时间：{{ r.upload_date }}</li>
+    {% else %}
+        <li>没有上传任何资料</li>
+    {% endfor %}
+</ul>
