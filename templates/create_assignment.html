@@ -1,0 +1,41 @@
+{% extends "dashboard.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>🔍 调试页面：发布新作业</h2>
+
+    {% if classrooms %}
+        <p>✅ 成功获取 {{ classrooms|length }} 个班级：</p>
+        <ul>
+            {% for cls in classrooms %}
+                <li>班级 ID: {{ cls.id }}, 名称: {{ cls.name }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p style="color:red;">⚠️ 未获取到任何班级数据，请检查数据库是否初始化成功。</p>
+    {% endif %}
+
+    <form method="post">
+        <div class="form-group">
+            <label for="title">作业标题</label>
+            <input type="text" name="title" id="title" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="description">作业描述</label>
+            <textarea name="description" id="description" class="form-control" rows="4"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="due_date">截止日期</label>
+            <input type="date" name="due_date" id="due_date" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="class_id">所属班级</label>
+            <select name="class_id" class="form-control" required>
+                {% for cls in classrooms %}
+                    <option value="{{ cls.id }}">{{ cls.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">发布作业</button>
+    </form>
+</div>
+{% endblock %}
