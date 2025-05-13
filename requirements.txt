@@ -1,4 +1,5 @@
 Flask
-Flask-WTF
 Flask-SQLAlchemy
+Flask-WTF
+flask-migrate
 gunicorn
