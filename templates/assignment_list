@@ -1,0 +1,22 @@
+{% extends "dashboard.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>我的作业</h2>
+    {% if assignments %}
+        <ul class="list-group">
+            {% for assignment in assignments %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5>{{ assignment.title }}</h5>
+                        <p class="mb-1">截止日期：{{ assignment.due_date.strftime('%Y-%m-%d') }}</p>
+                        <p class="text-muted">{{ assignment.description }}</p>
+                    </div>
+                    <a href="{{ url_for('submit_assignment', assignment_id=assignment.id) }}" class="btn btn-outline-primary">提交作业</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-muted">当前暂无作业。</p>
+    {% endif %}
+</div>
+{% endblock %}
