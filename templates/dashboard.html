@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>学生仪表板</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
     <style>
         .admin-link {
             color: #dc3545;
@@ -40,64 +41,70 @@
     <nav>
         <ul>
             <li><a href="{{ url_for('resources') }}" class="library-link">进入学校资料馆</a></li>
-            
+
             {% if user.username == 'Brooks' %}
                 <li><a href="{{ url_for('upload_resource') }}" class="upload-link">上传资料</a></li>
             {% endif %}
-            
+
             {% if user.is_admin or user.is_superadmin %}
                 <li><a href="{{ url_for('upload_resource') }}" class="upload-link">上传资料</a></li>
                 <li><a href="{{ url_for('manage_timetable') }}" class="upload-link">添加/管理课程</a></li>
                 <li><a href="{{ url_for('user_management') }}" class="admin-link">用户管理</a></li>
             {% endif %}
 
+            {% if not user.is_admin and not user.is_superadmin %}
+                <li><a href="{{ url_for('assignment_list') }}" class="upload-link">📄 我的作业</a></li>
+            {% endif %}
+            {% if user.is_admin or user.is_superadmin %}
+                <li><a href="{{ url_for('create_assignment') }}" class="upload-link">📝 发布作业</a></li>
+            {% endif %}
+
             <li><a href="{{ url_for('logout') }}" class="logout-link">退出登录</a></li>
         </ul>
     </nav>
 
-    {% if not user.is_admin %}
-        <section class="course-section">
-            <h2>📘 实时课程信息</h2>
-            {% if current_class %}
-                <p><strong>当前课程：</strong> {{ current_class.subject }}（{{ current_class.start_time.strftime('%H:%M') }} - {{ current_class.end_time.strftime('%H:%M') }}）</p>
-            {% else %}
-                <p><strong>当前课程：</strong> 暂无正在进行的课程</p>
-            {% endif %}
-
-            {% if next_class %}
-                <p><strong>下一节课：</strong> {{ next_class.subject }}（{{ next_class.start_time.strftime('%H:%M') }} - {{ next_class.end_time.strftime('%H:%M') }}）</p>
-            {% else %}
-                <p><strong>下一节课：</strong> 今日已无后续课程</p>
-            {% endif %}
-
-            <h3>📅 今日课程安排</h3>
-            {% if today_schedule %}
-                <ul class="schedule-list">
-                    {% for entry in today_schedule %}
-                        <li>{{ entry.start_time.strftime('%H:%M') }} - {{ entry.end_time.strftime('%H:%M') }}：{{ entry.subject }}</li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="no-course">今天没有安排课程</p>
-            {% endif %}
+    {% block content %}
+        {% if not user.is_admin and not user.is_superadmin %}
+            <section class="course-section">
+                <h2>📘 实时课程信息</h2>
+                {% if current_class %}
+                    <p><strong>当前课程：</strong> {{ current_class.subject }}（{{ current_class.start_time.strftime('%H:%M') }} - {{ current_class.end_time.strftime('%H:%M') }}）</p>
+                {% else %}
+                    <p><strong>当前课程：</strong> 暂无正在进行的课程</p>
+                {% endif %}
+                {% if next_class %}
+                    <p><strong>下一节课：</strong> {{ next_class.subject }}（{{ current_class.start_time.strftime('%H:%M') }} - {{ current_class.end_time.strftime('%H:%M') }}）</p>
+                {% else %}
+                    <p><strong>下一节课：</strong> 今日已无后续课程</p>
+                {% endif %}
+                <h3>📅 今日课程安排</h3>
+                {% if today_schedule %}
+                    <ul class="schedule-list">
+                        {% for entry in today_schedule %}
+                            <li>{{ entry.start_time.strftime('%H:%M') }} - {{ entry.end_time.strftime('%H:%M') }}：{{ entry.subject }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="no-course">今天没有安排课程</p>
+                {% endif %}
+            </section>
+        {% endif %}
+        <section class="announcement-section">
+            <h2>📢 班级公告</h2>
+            <ul>
+                {% for announcement in announcements %}
+                    <li class="announcement-item">
+                        <div class="announcement-header">
+                            <span class="announcement-title">{{ announcement.title }}</span>
+                            <span class="announcement-time">{{ announcement.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+                        <p class="announcement-content">{{ announcement.content }}</p>
+                    </li>
+                    {% if not loop.last %}<hr>{% endif %}
+                {% endfor %}
+            </ul>
         </section>
-    {% endif %}
-
-    <section class="announcement-section">
-        <h2>📢 班级公告</h2>
-        <ul>
-            {% for announcement in announcements %}
-                <li class="announcement-item">
-                    <div class="announcement-header">
-                        <span class="announcement-title">{{ announcement.title }}</span>
-                        <span class="announcement-time">{{ announcement.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
-                    </div>
-                    <p class="announcement-content">{{ announcement.content }}</p>
-                </li>
-                {% if not loop.last %}<hr>{% endif %}
-            {% endfor %}
-        </ul>
-    </section>
-
+    {% endblock %}
 </body>
 </html>
+
