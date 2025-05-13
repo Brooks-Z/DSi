@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError  # 解决 IntegrityError 未定义问�
 # 初始化 Flask 应用
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # 设置 Flask 的密钥，用于 session 加密等
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'  # 配置数据库地址
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # 关闭对象修改追踪，提高性能
 app.config['UPLOAD_FOLDER'] = 'uploaded_files'  # 上传文件保存路径
@@ -118,8 +119,8 @@ with app.app_context():
 def home():
     announcements = Announcement.query.order_by(Announcement.timestamp.desc()).limit(5).all()
     return render_template('home.html')
-    
-#语言切换路由
+
+# 语言切换路由
 @app.route('/set_language/<lang_code>')
 def set_language(lang_code):
     session['lang'] = lang_code
@@ -138,6 +139,7 @@ def login():
         else:
             return "登录失败，请检查用户名和密码", 401
     return render_template('login.html')
+
 # 退出登录路由
 @app.route('/logout')
 def logout():
@@ -164,9 +166,8 @@ def register():
             db.session.rollback()
             flash("用户名已存在，请选择其他用户名。", "danger")
             return render_template('register.html')
-    
-    return render_template('register.html')
 
+    return render_template('register.html')
 
 # 用户面板（显示公告、课程表）
 @app.route('/dashboard')
@@ -194,7 +195,6 @@ def dashboard():
     )
 
 # 获取当天的课程安排以及当前和下一节课
-
 def get_today_schedule_and_progress(class_id):
     today_weekday = datetime.now().strftime('%A')  # 获取今天是星期几
     now = datetime.now().time()  # 当前时间
@@ -351,6 +351,7 @@ def superadmin_required(f):
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
+
 # 用户管理路由
 @app.route('/admin/users')
 @admin_required
@@ -399,10 +400,129 @@ def toggle_admin(user_id):
     return redirect(url_for('user_management'))
 
 # 检查文件类型是否合法
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+# === 新增模型 ===
+class Assignment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    due_date = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    class_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False)
+    classroom = db.relationship('Classroom', backref=db.backref('assignments', lazy=True))
+
+class AssignmentSubmission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('assignment.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    file_path = db.Column(db.String(255), nullable=False)
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    grade = db.Column(db.String(10), nullable=True)
+    feedback = db.Column(db.Text, nullable=True)
+
+    assignment = db.relationship('Assignment', backref=db.backref('submissions', lazy=True))
+    student = db.relationship('User', backref=db.backref('submissions', lazy=True))
+
+# === 管理员发布作业 ===
+@app.route('/admin/assignments/create', methods=['GET', 'POST'], endpoint='create_assignment')
+def create_assignment():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+    if not (user.is_admin or user.is_superadmin):
+        return "权限不足", 403  # ✅ 超级管理员也可发布作业
+
+    classrooms = Classroom.query.all()
+    announcements = Announcement.query.order_by(Announcement.timestamp.desc()).all()  # ✅ 加上公告
+
+    if request.method == 'POST':
+        title = request.form['title']
+        description = request.form['description']
+        due_date = datetime.strptime(request.form['due_date'], '%Y-%m-%d')
+        class_id = request.form['class_id']
+        assignment = Assignment(title=title, description=description, due_date=due_date, class_id=class_id)
+        db.session.add(assignment)
+        db.session.commit()
+        flash('作业发布成功', 'success')
+        return redirect(url_for('dashboard'))
+
+    return render_template(
+        'create_assignment.html',
+        classrooms=classrooms,
+        user=user,
+        announcements=announcements  # ✅ 添加传入
+    )
+
+# === 学生提交作业 ===
+@app.route('/assignments/<int:assignment_id>/submit', methods=['GET', 'POST'])
+def submit_assignment(assignment_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    assignment = Assignment.query.get_or_404(assignment_id)
+    user = User.query.get(session['user_id'])
+    if not user or user.is_admin:
+        return "权限不足", 403
+
+    if request.method == 'POST':
+        file = request.files['file']
+        if file and '.' in file.filename:
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            submission = AssignmentSubmission(
+                assignment_id=assignment.id,
+                student_id=user.id,
+                file_path=filename
+            )
+            db.session.add(submission)
+            db.session.commit()
+            flash('作业提交成功', 'success')
+            return redirect(url_for('dashboard'))
+    return render_template('submit_assignment.html', assignment=assignment)
+
+# === 管理员查看作业提交 ===
+@app.route('/admin/assignments/<int:assignment_id>/submissions')
+def view_submissions(assignment_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+    if not user.is_admin:
+        return "权限不足", 403
+    assignment = Assignment.query.get_or_404(assignment_id)
+    return render_template('view_submissions.html', assignment=assignment)
+
+# === 管理员批改作业 ===
+@app.route('/admin/submissions/<int:submission_id>/grade', methods=['POST'])
+def grade_submission(submission_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+    if not user.is_admin:
+        return "权限不足", 403
+    submission = AssignmentSubmission.query.get_or_404(submission_id)
+    submission.grade = request.form['grade']
+    submission.feedback = request.form['feedback']
+    db.session.commit()
+    flash('评分完成', 'success')
+    return redirect(url_for('view_submissions', assignment_id=submission.assignment_id))
+
+# === 学生查看作业列表 ===
+@app.route('/assignments')
+def assignment_list():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+    if user.is_admin or user.is_superadmin:
+        return "权限不足", 403  # ✅ 仅允许学生访问作业列表
+    student_class = StudentClass.query.filter_by(user_id=user.id).first()
+    if not student_class:
+        return redirect(url_for('select_class'))
+    assignments = Assignment.query.filter_by(class_id=student_class.class_id).order_by(Assignment.due_date).all()
+    return render_template('assignment_list.html', assignments=assignments, user=user)
 
 # 启动应用
 if __name__ == '__main__':
     app.run(debug=True)
+
