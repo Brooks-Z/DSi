@@ -500,7 +500,7 @@ def create_assignment():
 def submit_assignment(assignment_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    
+
     user = User.query.get(session['user_id'])
     assignment = Assignment.query.get_or_404(assignment_id)
     form = SubmitAssignmentForm()
@@ -522,8 +522,12 @@ def submit_assignment(assignment_id):
             flash('提交成功！', 'success')
             return redirect(url_for('dashboard'))
 
-    return render_template('submit_assignment.html', assignment=assignment, form=form)
-
+    return render_template(
+        'submit_assignment.html',
+        assignment=assignment,
+        form=form,
+        user=user  # ✅ 关键补充
+    )
 
 # === 管理员查看作业提交 ===
 @app.route('/admin/assignments/<int:assignment_id>/submissions')
