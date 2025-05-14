@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, FileField
+from wtforms import StringField, SelectField, FileField, PasswordField
 from wtforms.validators import DataRequired
 from werkzeug.utils import secure_filename
 from flask_migrate import Migrate
