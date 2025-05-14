@@ -1,0 +1,44 @@
+{% extends "dashboard.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>作业提交详情：{{ assignment.title }}</h2>
+    <p><strong>截止日期：</strong> {{ assignment.due_date.strftime('%Y-%m-%d') }}</p>
+    <p><strong>说明：</strong> {{ assignment.description }}</p>
+    <hr>
+    {% if assignment.submissions %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>学生用户名</th>
+                    <th>提交时间</th>
+                    <th>文件</th>
+                    <th>评分</th>
+                    <th>反馈</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for submission in assignment.submissions %}
+                <tr>
+                    <td>{{ submission.student.username }}</td>
+                    <td>{{ submission.submitted_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td><a href="{{ url_for('get_file', filename=submission.file_path) }}" target="_blank">查看文件</a></td>
+                    <td>{{ submission.grade or '未评分' }}</td>
+                    <td>{{ submission.feedback or '无' }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('grade_submission', submission_id=submission.id) }}">
+                            {{ form.hidden_tag() }}
+                            <input type="text" name="grade" placeholder="评分" class="form-control mb-1" required>
+                            <textarea name="feedback" placeholder="反馈" class="form-control mb-1"></textarea>
+                            <button type="submit" class="btn btn-sm btn-primary">提交评分</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="text-muted">暂无学生提交该作业。</p>
+    {% endif %}
+</div>
+{% endblock %}
