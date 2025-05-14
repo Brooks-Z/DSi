@@ -1,15 +1,16 @@
 {% extends "dashboard.html" %}
 {% block content %}
-<div class="container mt-4">
-    <h2>提交作业：{{ assignment.title }}</h2>
-    <p><strong>说明：</strong> {{ assignment.description }}</p>
-    <p><strong>截止日期：</strong> {{ assignment.due_date.strftime('%Y-%m-%d') }}</p>
-    <form method="post" enctype="multipart/form-data">
-        <div class="form-group">
-            <label for="file">上传文件</label>
-            <input type="file" name="file" id="file" class="form-control" required>
-        </div>
-        <button type="submit" class="btn btn-success">提交</button>
-    </form>
+<div class="container mt-4">    
+<h2>提交作业：{{ assignment.title }}</h2>    
+<p><strong>说明：</strong> {{ assignment.description }}</p>    
+<p><strong>截止日期：</strong> {{ assignment.due_date.strftime('%Y-%m-%d') }}</p>    
+<form method="post" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}        
+<div class="form-group">            
+<label for="file">上传文件</label>            
+<input type="file" name="file" id="file" class="form-control" required>        
+</div>        
+<button type="submit" class="btn btn-success">提交</button>    
+</form>
 </div>
 {% endblock %}
