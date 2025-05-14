@@ -11,6 +11,8 @@ import os
 from functools import wraps  # 解决 wraps 未定义问题
 from flask import abort  # 解决 abort 未定义问题
 from sqlalchemy.exc import IntegrityError  # 解决 IntegrityError 未定义问题
+from flask_wtf import CSRFProtect
+
 
 # 初始化 Flask 应用
 app = Flask(__name__)
