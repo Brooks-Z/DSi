@@ -13,6 +13,8 @@ from flask import abort  # 解决 abort 未定义问题
 from sqlalchemy.exc import IntegrityError  # 解决 IntegrityError 未定义问题
 from flask_wtf import CSRFProtect
 from flask_wtf import FlaskForm
+from datetime import datetime
+
 
 class DummyForm(FlaskForm):
     pass
@@ -27,6 +29,13 @@ class LoginForm(FlaskForm):
 class RegisterForm(FlaskForm):
     username = StringField('用户名', validators=[DataRequired()])
     password = PasswordField('密码', validators=[DataRequired()])
+
+class AssignmentForm(FlaskForm):
+    title = StringField('标题', validators=[DataRequired()])
+    description = StringField('描述')
+    due_date = StringField('截止日期', validators=[DataRequired()])
+    class_id = SelectField('所属班级', coerce=int, validators=[DataRequired()])
+
 # 初始化 Flask 应用
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # 设置 Flask 的密钥，用于 session 加密等
@@ -456,17 +465,19 @@ def create_assignment():
         return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
     if not (user.is_admin or user.is_superadmin):
-        return "权限不足", 403  # ✅ 超级管理员也可发布作业
+        return "权限不足", 403
 
-    classrooms = Classroom.query.all()
-    announcements = Announcement.query.order_by(Announcement.timestamp.desc()).all()  # ✅ 加上公告
+    form = AssignmentForm()
+    form.class_id.choices = [(cls.id, cls.name) for cls in Classroom.query.all()]
+    announcements = Announcement.query.order_by(Announcement.timestamp.desc()).all()
 
-    if request.method == 'POST':
-        title = request.form['title']
-        description = request.form['description']
-        due_date = datetime.strptime(request.form['due_date'], '%Y-%m-%d')
-        class_id = request.form['class_id']
-        assignment = Assignment(title=title, description=description, due_date=due_date, class_id=class_id)
+    if form.validate_on_submit():
+        assignment = Assignment(
+            title=form.title.data,
+            description=form.description.data,
+            due_date=datetime.strptime(form.due_date.data, '%Y-%m-%d'),
+            class_id=form.class_id.data
+        )
         db.session.add(assignment)
         db.session.commit()
         flash('作业发布成功', 'success')
@@ -474,10 +485,12 @@ def create_assignment():
 
     return render_template(
         'create_assignment.html',
-        classrooms=classrooms,
+        form=form,
+        classrooms=Classroom.query.all(),
         user=user,
-        announcements=announcements  # ✅ 添加传入
+        announcements=announcements 
     )
+
 
 # === 学生提交作业 ===
 @app.route('/assignments/<int:assignment_id>/submit', methods=['GET', 'POST'])
