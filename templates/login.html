@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录页面</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -11,11 +10,18 @@
         <h1>登录</h1>
     </header>
     <form method="POST">
-        <label for="username">用户名：</label>
-        <input type="text" id="username" name="username" required>
+        {{ form.hidden_tag() }}
+
+        <label>{{ form.username.label }}</label>
+        {{ form.username() }}
+        {% for error in form.username.errors %}<span class="error">{{ error }}</span>{% endfor %}
+
         <br>
-        <label for="password">密码：</label>
-        <input type="password" id="password" name="password" required>
+
+        <label>{{ form.password.label }}</label>
+        {{ form.password() }}
+        {% for error in form.password.errors %}<span class="error">{{ error }}</span>{% endfor %}
+
         <br>
         <button type="submit">登录</button>
     </form>
