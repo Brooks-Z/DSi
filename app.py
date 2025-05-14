@@ -13,6 +13,8 @@ from flask import abort  # 解决 abort 未定义问题
 from sqlalchemy.exc import IntegrityError  # 解决 IntegrityError 未定义问题
 from flask_wtf import CSRFProtect
 
+class SelectClassForm(FlaskForm):
+    pass
 class LoginForm(FlaskForm):
     username = StringField('用户名', validators=[DataRequired()])
     password = PasswordField('密码', validators=[DataRequired()])
@@ -281,19 +283,17 @@ def get_file(filename):
 def select_class():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    user_id = session['user_id']
-    existing = StudentClass.query.filter_by(user_id=user_id).first()
-    if existing:
-        return redirect(url_for('dashboard'))
-    classrooms = Classroom.query.all()
+    user = User.query.get(session['user_id'])
+    form = SelectClassForm()  # ✅ 新增
     if request.method == 'POST':
-        selected_class = request.form.get('class_id')
-        if selected_class:
-            student_class = StudentClass(user_id=user_id, class_id=int(selected_class))
+        class_id = request.form.get('class_id')
+        if class_id:
+            student_class = StudentClass(user_id=user.id, class_id=class_id)
             db.session.add(student_class)
             db.session.commit()
             return redirect(url_for('dashboard'))
-    return render_template('select_class.html', classrooms=classrooms)
+    classrooms = Classroom.query.all()
+    return render_template('select_class.html', classrooms=classrooms, form=form)  # ✅ 传入 form
 
 # 管理员查看课程表页面
 @app.route('/admin/timetable', methods=['GET', 'POST'])
