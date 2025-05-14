@@ -528,6 +528,8 @@ def assignment_list():
     assignments = Assignment.query.filter_by(class_id=student_class.class_id).order_by(Assignment.due_date).all()
     return render_template('assignment_list.html', assignments=assignments, user=user)
 
+migrate = Migrate(app, db)
+
 # 启动应用
 if __name__ == '__main__':
     app.run(debug=True)
