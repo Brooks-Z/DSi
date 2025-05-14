@@ -393,12 +393,22 @@ def delete_user(user_id):
     elif target_user.is_admin and not current_user.is_superadmin:
         flash("普通管理员无权删除其他管理员", "danger")
     else:
-        # 删除用户相关数据（根据实际需求补充级联删除）
+        # ✅ 删除关联的 student_class 记录
+        student_class = StudentClass.query.filter_by(user_id=target_user.id).first()
+        if student_class:
+            db.session.delete(student_class)
+
+        # ✅ 如果还有其他关联表（如 AssignmentSubmission），也建议处理
+        submissions = AssignmentSubmission.query.filter_by(student_id=target_user.id).all()
+        for submission in submissions:
+            db.session.delete(submission)
+
         db.session.delete(target_user)
         db.session.commit()
         flash("用户已成功删除", "success")
-    
+
     return redirect(url_for('user_management'))
+
 
 # 提升/撤销管理员权限
 @app.route('/admin/toggle_admin/<int:user_id>', methods=['POST'])
