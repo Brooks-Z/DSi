@@ -13,7 +13,13 @@ from flask import abort  # 解决 abort 未定义问题
 from sqlalchemy.exc import IntegrityError  # 解决 IntegrityError 未定义问题
 from flask_wtf import CSRFProtect
 
+class LoginForm(FlaskForm):
+    username = StringField('用户名', validators=[DataRequired()])
+    password = PasswordField('密码', validators=[DataRequired()])
 
+class RegisterForm(FlaskForm):
+    username = StringField('用户名', validators=[DataRequired()])
+    password = PasswordField('密码', validators=[DataRequired()])
 # 初始化 Flask 应用
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # 设置 Flask 的密钥，用于 session 加密等
@@ -131,16 +137,17 @@ def set_language(lang_code):
 # 登录功能
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+    form = LoginForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
         user = User.query.filter_by(username=username).first()
         if user and check_password_hash(user.password, password):
             session['user_id'] = user.id
             return redirect(url_for('dashboard'))
         else:
-            return "登录失败，请检查用户名和密码", 401
-    return render_template('login.html')
+            flash("用户名或密码错误", "danger")
+    return render_template('login.html', form=form)
 
 # 退出登录路由
 @app.route('/logout')
@@ -153,12 +160,12 @@ def logout():
 # 注册功能
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+    form = RegisterForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
         new_user = User(username=username, password=hashed_password)
-
         try:
             db.session.add(new_user)
             db.session.commit()
@@ -167,10 +174,7 @@ def register():
         except IntegrityError:
             db.session.rollback()
             flash("用户名已存在，请选择其他用户名。", "danger")
-            return render_template('register.html')
-
-    return render_template('register.html')
-
+    return render_template('register.html', form=form)
 # 用户面板（显示公告、课程表）
 @app.route('/dashboard')
 def dashboard():
