@@ -19,9 +19,12 @@ from datetime import datetime
 class DummyForm(FlaskForm):
     pass
 
-
 class SelectClassForm(FlaskForm):
     pass
+
+class SubmitAssignmentForm(FlaskForm):
+    file = FileField('上传文件', validators=[DataRequired()])
+
 class LoginForm(FlaskForm):
     username = StringField('用户名', validators=[DataRequired()])
     password = PasswordField('密码', validators=[DataRequired()])
@@ -497,27 +500,30 @@ def create_assignment():
 def submit_assignment(assignment_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    assignment = Assignment.query.get_or_404(assignment_id)
+    
     user = User.query.get(session['user_id'])
-    if not user or user.is_admin:
-        return "权限不足", 403
+    assignment = Assignment.query.get_or_404(assignment_id)
+    form = SubmitAssignmentForm()
 
-    if request.method == 'POST':
+    if form.validate_on_submit():
         file = request.files['file']
-        if file and '.' in file.filename:
+        if file:
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
-            submission = AssignmentSubmission(
-                assignment_id=assignment.id,
-                student_id=user.id,
-                file_path=filename
+
+            submission = Submission(
+                file_path=filename,
+                user_id=user.id,
+                assignment_id=assignment.id
             )
             db.session.add(submission)
             db.session.commit()
-            flash('作业提交成功', 'success')
+            flash('提交成功！', 'success')
             return redirect(url_for('dashboard'))
-    return render_template('submit_assignment.html', assignment=assignment)
+
+    return render_template('submit_assignment.html', assignment=assignment, form=form)
+
 
 # === 管理员查看作业提交 ===
 @app.route('/admin/assignments/<int:assignment_id>/submissions')
