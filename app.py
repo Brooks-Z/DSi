@@ -23,7 +23,7 @@ app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'docx', 'pptx', 'xlsx', 'txt'}  # 允
 
 # 创建上传目录（如果不存在）
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
+csrf = CSRFProtect(app)
 # 初始化数据库及迁移功能
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
