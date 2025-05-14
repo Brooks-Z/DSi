@@ -12,6 +12,7 @@
 
     <!-- 选择班级下拉框 -->
     <form method="POST" action="{{ url_for('manage_timetable') }}">
+        {{ form.hidden_tag() }}
         <label for="class_id">选择班级：</label>
         <select name="class_id" required>
             <option value="">-- 请选择 --</option>
@@ -52,6 +53,7 @@
     {% if selected_class_id %}
         <h2>添加课程到课程表</h2>
         <form method="POST" action="{{ url_for('add_timetable_entry') }}">
+            {{ form.hidden_tag() }}
             <input type="hidden" name="class_id" value="{{ selected_class_id }}">
 
             <label for="weekday">星期：</label>
@@ -78,3 +80,4 @@
 
 </body>
 </html>
+
