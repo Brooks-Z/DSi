@@ -12,6 +12,11 @@ from functools import wraps  # 解决 wraps 未定义问题
 from flask import abort  # 解决 abort 未定义问题
 from sqlalchemy.exc import IntegrityError  # 解决 IntegrityError 未定义问题
 from flask_wtf import CSRFProtect
+from flask_wtf import FlaskForm
+
+class DummyForm(FlaskForm):
+    pass
+
 
 class SelectClassForm(FlaskForm):
     pass
@@ -363,7 +368,10 @@ def superadmin_required(f):
 @admin_required
 def user_management():
     user = User.query.get(session['user_id'])
-    query = User.query
+    users = User.query.all()
+    form = DummyForm() 
+    return render_template('user_management.html', users=users, user=user, form=form)
+
     
     # 普通管理员只能查看普通用户
     if not user.is_superadmin:
